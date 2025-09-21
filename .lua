@@ -14,37 +14,32 @@ local joinTimes = {}
 -- User colors
 local userColors = {}
 local function getUserColor(userId)
-    if userColors[userId] then
-        return userColors[userId]
+    if not userColors[userId] then
+        userColors[userId] = Color3.fromHSV(
+            math.random(),
+            0.6 + math.random() * 0.4,
+            0.8 + math.random() * 0.2
+        )
     end
-    local color = Color3.fromHSV(
-        math.random(),
-        0.6 + math.random() * 0.4,
-        0.8 + math.random() * 0.2
-    )
-    userColors[userId] = color
-    return color
+    return userColors[userId]
 end
 
 local useDisplayName = false
 local messageLabels = {}
+local playerRows = {}
 
 -- ScreenGui
 local ScreenGui = Instance.new('ScreenGui')
-ScreenGui.Name = 'MiniChat'
-ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = game.CoreGui
+ScreenGui.Name, ScreenGui.ResetOnSpawn, ScreenGui.Parent =
+    'MiniChat', false, game.CoreGui
 getgenv().MiniChat = ScreenGui
 
 -- Main Frame
 local Frame = Instance.new('Frame')
-Frame.Size = UDim2.new(0, 300, 0, 300)
-Frame.Position = UDim2.new(0.3, 0, 0.3, 0)
-Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-Frame.BorderSizePixel = 0
-Frame.Active = true
-Frame.Draggable = true
-Frame.Parent = ScreenGui
+Frame.Size, Frame.Position =
+    UDim2.new(0, 300, 0, 300), UDim2.new(0.3, 0, 0.3, 0)
+Frame.BackgroundColor3, Frame.BorderSizePixel = Color3.fromRGB(30, 30, 30), 0
+Frame.Active, Frame.Draggable, Frame.Parent = true, true, ScreenGui
 
 -- Drag logic
 local dragging, dragInput, dragStart, startPos
@@ -57,14 +52,13 @@ local function updateDrag(input)
         startPos.Y.Offset + delta.Y
     )
 end
+
 Frame.InputBegan:Connect(function(input)
     if
         input.UserInputType == Enum.UserInputType.MouseButton1
         or input.UserInputType == Enum.UserInputType.Touch
     then
-        dragging = true
-        dragStart = input.Position
-        startPos = Frame.Position
+        dragging, dragStart, startPos = true, input.Position, Frame.Position
         input.Changed:Connect(function()
             if input.UserInputState == Enum.UserInputState.End then
                 dragging = false
@@ -72,6 +66,7 @@ Frame.InputBegan:Connect(function(input)
         end)
     end
 end)
+
 Frame.InputChanged:Connect(function(input)
     if
         input.UserInputType == Enum.UserInputType.MouseMovement
@@ -80,6 +75,7 @@ Frame.InputChanged:Connect(function(input)
         dragInput = input
     end
 end)
+
 UIS.InputChanged:Connect(function(input)
     if input == dragInput and dragging then
         updateDrag(input)
@@ -87,48 +83,39 @@ UIS.InputChanged:Connect(function(input)
 end)
 
 -- Tabs
-local ChatFrame = Instance.new('Frame')
-ChatFrame.Size = UDim2.new(1, -10, 1, -35)
-ChatFrame.Position = UDim2.new(0, 5, 0, 35)
-ChatFrame.BackgroundTransparency = 1
-ChatFrame.Parent = Frame
+local function createFrame(name, visible)
+    local frame = Instance.new(name == 'Chat' and 'Frame' or 'ScrollingFrame')
+    frame.Size, frame.Position =
+        UDim2.new(1, -10, 1, -35), UDim2.new(0, 5, 0, 35)
+    frame.BackgroundTransparency, frame.Visible = 1, visible
+    if name ~= 'Chat' then
+        frame.ScrollBarThickness = 5
+    end
+    frame.Parent = Frame
 
-local LogsFrame = Instance.new('ScrollingFrame')
-LogsFrame.Size = ChatFrame.Size
-LogsFrame.Position = ChatFrame.Position
-LogsFrame.BackgroundTransparency = 1
-LogsFrame.ScrollBarThickness = 5
-LogsFrame.Visible = false
-LogsFrame.Parent = Frame
-local LogsLayout = Instance.new('UIListLayout')
-LogsLayout.Parent = LogsFrame
-LogsLayout.SortOrder = Enum.SortOrder.LayoutOrder
-LogsLayout.Padding = UDim.new(0, 2)
+    if name ~= 'Chat' then
+        local layout = Instance.new('UIListLayout')
+        layout.Parent, layout.SortOrder, layout.Padding =
+            frame, Enum.SortOrder.LayoutOrder, UDim.new(0, 2)
+    end
+    return frame
+end
 
-local PlrsFrame = Instance.new('ScrollingFrame')
-PlrsFrame.Size = ChatFrame.Size
-PlrsFrame.Position = ChatFrame.Position
-PlrsFrame.BackgroundTransparency = 1
-PlrsFrame.ScrollBarThickness = 5
-PlrsFrame.Visible = false
-PlrsFrame.Parent = Frame
-local PlrsLayout = Instance.new('UIListLayout')
-PlrsLayout.Parent = PlrsFrame
-PlrsLayout.SortOrder = Enum.SortOrder.LayoutOrder
-PlrsLayout.Padding = UDim.new(0, 5)
+local ChatFrame = createFrame('Chat', true)
+local LogsFrame, PlrsFrame =
+    createFrame('Logs', false), createFrame('Plrs', false)
 
 -- Chat scrolling
 local ChatScrolling = Instance.new('ScrollingFrame')
-ChatScrolling.Size = UDim2.new(1, 0, 1, 0)
-ChatScrolling.Position = UDim2.new(0, 0, 0, 0)
-ChatScrolling.BackgroundTransparency = 1
-ChatScrolling.ScrollBarThickness = 5
-ChatScrolling.CanvasSize = UDim2.new(0, 0, 0, 0)
+ChatScrolling.Size, ChatScrolling.Position =
+    UDim2.new(1, 0, 1, 0), UDim2.new(0, 0, 0, 0)
+ChatScrolling.BackgroundTransparency, ChatScrolling.ScrollBarThickness, ChatScrolling.CanvasSize =
+    1, 5, UDim2.new(0, 0, 0, 0)
 ChatScrolling.Parent = ChatFrame
+
 local UIListLayout = Instance.new('UIListLayout')
-UIListLayout.Parent = ChatScrolling
-UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-UIListLayout.Padding = UDim.new(0, 2)
+UIListLayout.Parent, UIListLayout.SortOrder, UIListLayout.Padding =
+    ChatScrolling, Enum.SortOrder.LayoutOrder, UDim.new(0, 2)
 UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function()
     ChatScrolling.CanvasSize =
         UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y)
@@ -136,25 +123,22 @@ UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function()
         Vector2.new(0, ChatScrolling.CanvasSize.Y.Offset)
 end)
 
--- Add chat message
+-- Add message function
 local function addMessage(userId, userName, displayName, text)
     local lbl = Instance.new('TextLabel')
-    lbl.Size = UDim2.new(1, -10, 0, 0)
-    lbl.BackgroundTransparency = 1
-    lbl.Font = Enum.Font.SourceSans
-    lbl.TextSize = 16
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.TextWrapped = true
-    lbl.AutomaticSize = Enum.AutomaticSize.Y
-    lbl.RichText = true
-    lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
-    lbl.Parent = ChatScrolling
+    lbl.Size, lbl.BackgroundTransparency = UDim2.new(1, -10, 0, 0), 1
+    lbl.Font, lbl.TextSize, lbl.TextXAlignment =
+        Enum.Font.SourceSans, 16, Enum.TextXAlignment.Left
+    lbl.TextWrapped, lbl.AutomaticSize, lbl.RichText =
+        true, Enum.AutomaticSize.Y, true
+    lbl.TextColor3, lbl.Parent = Color3.fromRGB(255, 255, 255), ChatScrolling
 
+    local color = getUserColor(userId)
     local colorHex = string.format(
         '%02X%02X%02X',
-        math.floor(getUserColor(userId).R * 255),
-        math.floor(getUserColor(userId).G * 255),
-        math.floor(getUserColor(userId).B * 255)
+        math.floor(color.R * 255),
+        math.floor(color.G * 255),
+        math.floor(color.B * 255)
     )
     local nameToShow = useDisplayName and displayName or userName
     lbl.Text = string.format(
@@ -164,13 +148,16 @@ local function addMessage(userId, userName, displayName, text)
         text
     )
 
-    table.insert(messageLabels, {
-        label = lbl,
-        userId = userId,
-        userName = userName,
-        displayName = displayName,
-        text = text,
-    })
+    table.insert(
+        messageLabels,
+        {
+            label = lbl,
+            userId = userId,
+            userName = userName,
+            displayName = displayName,
+            text = text,
+        }
+    )
 end
 
 TextChatService.OnIncomingMessage = function(msg)
@@ -194,18 +181,16 @@ end
 -- Logs
 local function addLog(text, joined)
     local lbl = Instance.new('TextLabel')
-    lbl.Size = UDim2.new(1, -10, 0, 0)
-    lbl.BackgroundTransparency = 1
-    lbl.Font = Enum.Font.SourceSans
-    lbl.TextSize = 16
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.TextWrapped = true
-    lbl.AutomaticSize = Enum.AutomaticSize.Y
-    lbl.TextColor3 = joined and Color3.fromRGB(0, 255, 0)
-        or Color3.fromRGB(255, 0, 0)
-    lbl.Text = text
-    lbl.Parent = LogsFrame
-    LogsFrame.CanvasSize = UDim2.new(0, 0, 0, LogsLayout.AbsoluteContentSize.Y)
+    lbl.Size, lbl.BackgroundTransparency = UDim2.new(1, -10, 0, 0), 1
+    lbl.Font, lbl.TextSize, lbl.TextXAlignment =
+        Enum.Font.SourceSans, 16, Enum.TextXAlignment.Left
+    lbl.TextWrapped, lbl.AutomaticSize, lbl.TextColor3 =
+        true,
+        Enum.AutomaticSize.Y,
+        joined and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+    lbl.Text, lbl.Parent = text, LogsFrame
+    LogsFrame.CanvasSize =
+        UDim2.new(0, 0, 0, LogsFrame.UIListLayout.AbsoluteContentSize.Y)
     LogsFrame.CanvasPosition = Vector2.new(0, LogsFrame.CanvasSize.Y.Offset)
 end
 
@@ -218,12 +203,13 @@ end)
 
 Players.PlayerRemoving:Connect(function(plr)
     local joinTime = joinTimes[plr.UserId]
+    local timeStr = ''
     if joinTime then
         local duration = os.time() - joinTime
-        local h = math.floor(duration / 3600)
-        local m = math.floor((duration % 3600) / 60)
-        local s = duration % 60
-        local timeStr = ''
+        local h, m, s =
+            math.floor(duration / 3600),
+            math.floor((duration % 3600) / 60),
+            duration % 60
         if h > 0 then
             timeStr = timeStr .. h .. 'h '
         end
@@ -231,16 +217,16 @@ Players.PlayerRemoving:Connect(function(plr)
             timeStr = timeStr .. m .. 'm '
         end
         timeStr = timeStr .. s .. 's'
-        addLog(plr.Name .. ' left (' .. timeStr .. ')', false)
         joinTimes[plr.UserId] = nil
-    else
-        addLog(plr.Name .. ' left', false)
     end
+    addLog(
+        plr.Name .. ' left' .. (timeStr ~= '' and ' (' .. timeStr .. ')' or ''),
+        false
+    )
     updatePlayers()
 end)
 
--- Player list (optimized)
-local playerRows = {}
+-- Player list
 local camera = workspace.CurrentCamera
 local oldSubject = camera.CameraSubject
 
@@ -248,33 +234,31 @@ function updatePlayers()
     for _, plr in ipairs(Players:GetPlayers()) do
         if not playerRows[plr.UserId] then
             local row = Instance.new('Frame')
-            row.Size = UDim2.new(1, -10, 0, 25)
-            row.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-            row.BorderSizePixel = 0
+            row.Size, row.BackgroundColor3, row.BorderSizePixel =
+                UDim2.new(1, -10, 0, 25), Color3.fromRGB(40, 40, 40), 0
             row.Parent = PlrsFrame
 
             local nameLabel = Instance.new('TextLabel')
-            nameLabel.Size = UDim2.new(0.6, -5, 1, 0)
-            nameLabel.Position = UDim2.new(0, 5, 0, 0)
-            nameLabel.BackgroundTransparency = 1
-            nameLabel.Font = Enum.Font.SourceSans
-            nameLabel.TextSize = 14
-            nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-            nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            nameLabel.Size, nameLabel.Position =
+                UDim2.new(0.6, -5, 1, 0), UDim2.new(0, 5, 0, 0)
+            nameLabel.BackgroundTransparency, nameLabel.Font, nameLabel.TextSize =
+                1, Enum.Font.SourceSans, 14
+            nameLabel.TextXAlignment, nameLabel.TextColor3, nameLabel.TextTruncate =
+                Enum.TextXAlignment.Left,
+                Color3.fromRGB(255, 255, 255),
+                Enum.TextTruncate.AtEnd
             nameLabel.Text = plr.DisplayName ~= plr.Name
                     and plr.DisplayName .. ' (@' .. plr.Name .. ')'
                 or plr.Name
-            nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
             nameLabel.Parent = row
 
             local healthLabel = Instance.new('TextLabel')
-            healthLabel.Size = UDim2.new(0.15, -5, 1, 0)
-            healthLabel.Position = UDim2.new(0.6, 0, 0, 0)
-            healthLabel.BackgroundTransparency = 1
-            healthLabel.Font = Enum.Font.SourceSans
-            healthLabel.TextSize = 14
-            healthLabel.TextXAlignment = Enum.TextXAlignment.Right
-            healthLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            healthLabel.Size, healthLabel.Position =
+                UDim2.new(0.15, -5, 1, 0), UDim2.new(0.6, 0, 0, 0)
+            healthLabel.BackgroundTransparency, healthLabel.Font, healthLabel.TextSize =
+                1, Enum.Font.SourceSans, 14
+            healthLabel.TextXAlignment, healthLabel.TextColor3 =
+                Enum.TextXAlignment.Right, Color3.fromRGB(255, 255, 255)
             healthLabel.Parent = row
 
             local function updateHealth()
@@ -285,6 +269,7 @@ function updatePlayers()
                         .. math.floor(plr.Character.Humanoid.Health)
                 end
             end
+
             if plr.Character then
                 plr.Character
                     :WaitForChild('Humanoid').HealthChanged
@@ -299,14 +284,12 @@ function updatePlayers()
 
             -- TP button
             local tpBtn = Instance.new('TextButton')
-            tpBtn.Size = UDim2.new(0.1, 0, 0.8, 0)
-            tpBtn.Position = UDim2.new(0.75, 0, 0.1, 0)
-            tpBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-            tpBtn.BorderSizePixel = 0
-            tpBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            tpBtn.Font = Enum.Font.SourceSansBold
-            tpBtn.TextSize = 12
-            tpBtn.Text = 'TP'
+            tpBtn.Size, tpBtn.Position =
+                UDim2.new(0.1, 0, 0.8, 0), UDim2.new(0.75, 0, 0.1, 0)
+            tpBtn.BackgroundColor3, tpBtn.BorderSizePixel, tpBtn.TextColor3 =
+                Color3.fromRGB(60, 60, 60), 0, Color3.fromRGB(255, 255, 255)
+            tpBtn.Font, tpBtn.TextSize, tpBtn.Text =
+                Enum.Font.SourceSansBold, 12, 'TP'
             tpBtn.Parent = row
             tpBtn.MouseButton1Click:Connect(function()
                 local localChar = Players.LocalPlayer.Character
@@ -323,15 +306,14 @@ function updatePlayers()
 
             -- View button
             local viewBtn = Instance.new('TextButton')
-            viewBtn.Size = UDim2.new(0.1, 0, 0.8, 0)
-            viewBtn.Position = UDim2.new(0.87, 0, 0.1, 0)
-            viewBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-            viewBtn.BorderSizePixel = 0
-            viewBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            viewBtn.Font = Enum.Font.SourceSansBold
-            viewBtn.TextSize = 12
-            viewBtn.Text = 'View'
+            viewBtn.Size, viewBtn.Position =
+                UDim2.new(0.1, 0, 0.8, 0), UDim2.new(0.87, 0, 0.1, 0)
+            viewBtn.BackgroundColor3, viewBtn.BorderSizePixel, viewBtn.TextColor3 =
+                Color3.fromRGB(60, 60, 60), 0, Color3.fromRGB(255, 255, 255)
+            viewBtn.Font, viewBtn.TextSize, viewBtn.Text =
+                Enum.Font.SourceSansBold, 12, 'View'
             viewBtn.Parent = row
+
             local viewing = false
             viewBtn.MouseButton1Click:Connect(function()
                 viewing = not viewing
@@ -358,14 +340,12 @@ end
 local tabNames = { 'Chat', 'Logs', 'Plrs' }
 for i, name in ipairs(tabNames) do
     local btn = Instance.new('TextButton')
-    btn.Size = UDim2.new(0, 25, 0, 25)
-    btn.Position = UDim2.new(0, 5 + (i - 1) * 30, 0, 5)
-    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    btn.BorderSizePixel = 0
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Font = Enum.Font.SourceSansBold
-    btn.TextSize = 14
-    btn.Text = string.sub(name, 1, 1)
+    btn.Size, btn.Position =
+        UDim2.new(0, 25, 0, 25), UDim2.new(0, 5 + (i - 1) * 30, 0, 5)
+    btn.BackgroundColor3, btn.BorderSizePixel, btn.TextColor3 =
+        Color3.fromRGB(50, 50, 50), 0, Color3.fromRGB(255, 255, 255)
+    btn.Font, btn.TextSize, btn.Text =
+        Enum.Font.SourceSansBold, 14, string.sub(name, 1, 1)
     btn.Parent = Frame
     btn.MouseButton1Click:Connect(function()
         ChatFrame.Visible = (name == 'Chat')
@@ -376,24 +356,25 @@ end
 
 -- U/D toggle
 local ToggleBtn = Instance.new('TextButton')
-ToggleBtn.Size = UDim2.new(0, 25, 0, 25)
-ToggleBtn.Position = UDim2.new(1, -30, 0, 5)
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleBtn.Font = Enum.Font.SourceSansBold
-ToggleBtn.TextSize = 16
-ToggleBtn.Text = 'U'
+ToggleBtn.Size, ToggleBtn.Position =
+    UDim2.new(0, 25, 0, 25), UDim2.new(1, -30, 0, 5)
+ToggleBtn.BackgroundColor3, ToggleBtn.TextColor3 =
+    Color3.fromRGB(50, 50, 50), Color3.fromRGB(255, 255, 255)
+ToggleBtn.Font, ToggleBtn.TextSize, ToggleBtn.Text =
+    Enum.Font.SourceSansBold, 16, 'U'
 ToggleBtn.Parent = Frame
+
 ToggleBtn.MouseButton1Click:Connect(function()
     useDisplayName = not useDisplayName
     ToggleBtn.Text = useDisplayName and 'D' or 'U'
     for _, info in pairs(messageLabels) do
         local nameToShow = useDisplayName and info.displayName or info.userName
+        local color = getUserColor(info.userId)
         local colorHex = string.format(
             '%02X%02X%02X',
-            math.floor(getUserColor(info.userId).R * 255),
-            math.floor(getUserColor(info.userId).G * 255),
-            math.floor(getUserColor(info.userId).B * 255)
+            math.floor(color.R * 255),
+            math.floor(color.G * 255),
+            math.floor(color.B * 255)
         )
         info.label.Text = string.format(
             "<font color='#%s'>%s</font>: %s",
@@ -404,14 +385,8 @@ ToggleBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Default tab
-ChatFrame.Visible = true
-LogsFrame.Visible = false
-PlrsFrame.Visible = false
-
--- Initialize existing players join times
+-- Initialize existing players
 for _, plr in ipairs(Players:GetPlayers()) do
     joinTimes[plr.UserId] = os.time()
 end
-
 updatePlayers()
